@@ -18,110 +18,99 @@ from blocks.roles import INPUT
 from theano import tensor
 
 from ali.algorithms import ali_algorithm
-from ali.conditional_bricks import (EncoderMapping, Decoder,
-                                    GaussianConditional, XZYJointDiscriminator,
-                                    ConditionalALI, )
-from ali.streams import create_celeba_data_streams
+from ali.bricks import (ALI, GaussianConditional, DeterministicConditional,
+                        XZJointDiscriminator, ConvMaxout)
+from ali.streams import create_flower_data_streams
 from ali.utils import get_log_odds, conv_brick, conv_transpose_brick, bn_brick
 
-BATCH_SIZE = 128
-MONITORING_BATCH_SIZE = 128
-NUM_EPOCHS = 123
-IMAGE_SIZE = (64, 64)
+BATCH_SIZE = 100
+MONITORING_BATCH_SIZE = 500
+NUM_EPOCHS = 600
+IMAGE_SIZE = (32, 32)
 NUM_CHANNELS = 3
-NLAT = 256
-NCLASSES = 40
-NEMB = 256
-
+NLAT = 64
 GAUSSIAN_INIT = IsotropicGaussian(std=0.01)
 ZERO_INIT = Constant(0)
+LEAK = 0.1
+NUM_PIECES = 2
 LEARNING_RATE = 1e-4
 BETA1 = 0.5
-LEAK = 0.02
 
 
 def create_model_brick():
-    # Encoder
-    enc_layers = [
-        conv_brick(2, 1, 64), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(7, 2, 128), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(5, 2, 256), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(7, 2, 256), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(4, 1, 512), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(1, 1, 2 * NLAT)]
-
-    encoder_mapping = EncoderMapping(layers=enc_layers,
-                                     num_channels=NUM_CHANNELS,
-                                     n_emb=NEMB,
-                                     image_size=IMAGE_SIZE, weights_init=GAUSSIAN_INIT,
-                                     biases_init=ZERO_INIT,
-                                     use_bias=False)
-
-    encoder = GaussianConditional(encoder_mapping, name='encoder')
-    # Decoder
-    dec_layers = [
-        conv_transpose_brick(4, 1, 512), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_transpose_brick(7, 2, 256), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_transpose_brick(5, 2, 256), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_transpose_brick(7, 2, 128), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_transpose_brick(2, 1, 64), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(1, 1, NUM_CHANNELS), Logistic()]
-
-    decoder = Decoder(
-        layers=dec_layers, num_channels=NLAT + NEMB, image_size=(1, 1), use_bias=False,
-        name='decoder_mapping')
-    # Discriminator
     layers = [
-        conv_brick(2, 1, 64), LeakyRectifier(leak=LEAK),
-        conv_brick(7, 2, 128), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(5, 2, 256), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(7, 2, 256), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_brick(4, 1, 512), bn_brick(), LeakyRectifier(leak=LEAK)]
+        conv_brick(5, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(4, 2, 64), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(4, 1, 128), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(4, 2, 256), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(4, 1, 512), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(1, 1, 512), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(1, 1, 2 * NLAT)]
+    encoder_mapping = ConvolutionalSequence(
+        layers=layers, num_channels=NUM_CHANNELS, image_size=IMAGE_SIZE,
+        use_bias=False, name='encoder_mapping')
+    encoder = GaussianConditional(encoder_mapping, name='encoder')
+
+    layers = [
+        conv_transpose_brick(4, 1, 256), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_transpose_brick(4, 2, 128), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_transpose_brick(4, 1, 64), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_transpose_brick(4, 2, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_transpose_brick(5, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_transpose_brick(1, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(1, 1, NUM_CHANNELS), Logistic()]
+    decoder_mapping = ConvolutionalSequence(
+        layers=layers, num_channels=NLAT, image_size=(1, 1), use_bias=False,
+        name='decoder_mapping')
+    decoder = DeterministicConditional(decoder_mapping, name='decoder')
+
+    layers = [
+        conv_brick(5, 1, 32), ConvMaxout(num_pieces=NUM_PIECES),
+        conv_brick(4, 2, 64), ConvMaxout(num_pieces=NUM_PIECES),
+        conv_brick(4, 1, 128), ConvMaxout(num_pieces=NUM_PIECES),
+        conv_brick(4, 2, 256), ConvMaxout(num_pieces=NUM_PIECES),
+        conv_brick(4, 1, 512), ConvMaxout(num_pieces=NUM_PIECES)]
     x_discriminator = ConvolutionalSequence(
         layers=layers, num_channels=NUM_CHANNELS, image_size=IMAGE_SIZE,
-        use_bias=False, name='x_discriminator')
+        name='x_discriminator')
     x_discriminator.push_allocation_config()
 
     layers = [
-        conv_brick(1, 1, 1024), LeakyRectifier(leak=LEAK),
-        conv_brick(1, 1, 1024), LeakyRectifier(leak=LEAK)]
+        conv_brick(1, 1, 512), ConvMaxout(num_pieces=NUM_PIECES),
+        conv_brick(1, 1, 512), ConvMaxout(num_pieces=NUM_PIECES)]
     z_discriminator = ConvolutionalSequence(
         layers=layers, num_channels=NLAT, image_size=(1, 1), use_bias=False,
         name='z_discriminator')
     z_discriminator.push_allocation_config()
 
     layers = [
-        conv_brick(1, 1, 2048), LeakyRectifier(leak=LEAK),
-        conv_brick(1, 1, 2048), LeakyRectifier(leak=LEAK),
+        conv_brick(1, 1, 1024), ConvMaxout(num_pieces=NUM_PIECES),
+        conv_brick(1, 1, 1024), ConvMaxout(num_pieces=NUM_PIECES),
         conv_brick(1, 1, 1)]
     joint_discriminator = ConvolutionalSequence(
         layers=layers,
         num_channels=(x_discriminator.get_dim('output')[0] +
-                      z_discriminator.get_dim('output')[0] +
-                      NEMB),
+                      z_discriminator.get_dim('output')[0]),
         image_size=(1, 1),
         name='joint_discriminator')
 
-    discriminator = XZYJointDiscriminator(
+    discriminator = XZJointDiscriminator(
         x_discriminator, z_discriminator, joint_discriminator,
         name='discriminator')
 
-    ali = ConditionalALI(encoder, decoder, discriminator,
-                         n_cond=NCLASSES, n_emb=NEMB,
-                         weights_init=GAUSSIAN_INIT, biases_init=ZERO_INIT,
-                         name='ali')
+    ali = ALI(encoder, decoder, discriminator,
+              weights_init=GAUSSIAN_INIT, biases_init=ZERO_INIT,
+              name='ali')
     ali.push_allocation_config()
     encoder_mapping.layers[-1].use_bias = True
     encoder_mapping.layers[-1].tied_biases = False
-    decoder.layers[-2].use_bias = True
-    decoder.layers[-2].tied_biases = False
-    x_discriminator.layers[0].use_bias = True
-    x_discriminator.layers[0].tied_biases = True
+    decoder_mapping.layers[-2].use_bias = True
+    decoder_mapping.layers[-2].tied_biases = False
     ali.initialize()
     raw_marginals, = next(
-        create_celeba_data_streams(500, 500)[0].get_epoch_iterator())
+        create_flower_data_streams(500, 500)[0].get_epoch_iterator())
     b_value = get_log_odds(raw_marginals)
-    decoder.layers[-2].b.set_value(b_value)
+    decoder_mapping.layers[-2].b.set_value(b_value)
 
     return ali
 
@@ -129,19 +118,22 @@ def create_model_brick():
 def create_models():
     ali = create_model_brick()
     x = tensor.tensor4('features')
-    y = tensor.matrix('targets')
     z = ali.theano_rng.normal(size=(x.shape[0], NLAT, 1, 1))
 
     def _create_model(with_dropout):
-        cg = ComputationGraph(ali.compute_losses(x, z, y))
+        cg = ComputationGraph(ali.compute_losses(x, z))
         if with_dropout:
             inputs = VariableFilter(
-                bricks=([ali.discriminator.x_discriminator.layers[0]] +
-                        ali.discriminator.x_discriminator.layers[2::3] +
-                        ali.discriminator.z_discriminator.layers[::2] +
-                        ali.discriminator.joint_discriminator.layers[::2]),
+                bricks=([ali.discriminator.x_discriminator.layers[0],
+                         ali.discriminator.z_discriminator.layers[0]]),
                 roles=[INPUT])(cg.variables)
             cg = apply_dropout(cg, inputs, 0.2)
+            inputs = VariableFilter(
+                bricks=(ali.discriminator.x_discriminator.layers[2::3] +
+                        ali.discriminator.z_discriminator.layers[2::2] +
+                        ali.discriminator.joint_discriminator.layers[::2]),
+                roles=[INPUT])(cg.variables)
+            cg = apply_dropout(cg, inputs, 0.5)
         return Model(cg.outputs)
 
     model = _create_model(with_dropout=False)
@@ -156,6 +148,7 @@ def create_models():
 
 
 def create_main_loop(save_path):
+
     model, bn_model, bn_updates = create_models()
     ali, = bn_model.top_bricks
     discriminator_loss, generator_loss = bn_model.outputs
@@ -165,8 +158,7 @@ def create_main_loop(save_path):
                               step_rule, generator_loss,
                               ali.generator_parameters, step_rule)
     algorithm.add_updates(bn_updates)
-    streams = create_celeba_data_streams(BATCH_SIZE, MONITORING_BATCH_SIZE,
-                                         sources=('features', 'targets'))
+    streams = create_flower_data_streams(BATCH_SIZE, MONITORING_BATCH_SIZE)
     main_loop_stream, train_monitor_stream, valid_monitor_stream = streams
     bn_monitored_variables = (
         [v for v in bn_model.auxiliary_variables if 'norm' not in v.name] +
@@ -194,8 +186,8 @@ def create_main_loop(save_path):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    parser = argparse.ArgumentParser(description="Train ALI on CelebA")
-    parser.add_argument("--save-path", type=str, default='ali_conditional_celeba.tar',
+    parser = argparse.ArgumentParser(description="Train ALI on Flowers")
+    parser.add_argument("--save-path", type=str, default='ali_flowers_32x32.tar',
                         help="main loop save path")
     args = parser.parse_args()
     create_main_loop(args.save_path).run()

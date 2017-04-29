@@ -3,6 +3,9 @@ from fuel.datasets import CIFAR10, SVHN, CelebA
 from fuel.datasets.toy import Spiral
 from fuel.schemes import ShuffledScheme
 from fuel.streams import DataStream
+from fuel.datasets import H5PYDataset
+from fuel.transformers.defaults import uint8_pixels_to_floatX
+from fuel.utils import find_in_data_path
 
 from .datasets import TinyILSVRC2012, GaussianMixture
 
@@ -30,6 +33,38 @@ def create_cifar10_data_streams(batch_size, monitoring_batch_size, rng=None):
         ('train',), sources=('features',), subset=slice(0, 45000))
     valid_set = CIFAR10(
         ('train',), sources=('features',), subset=slice(45000, 50000))
+    main_loop_stream = DataStream.default_stream(
+        train_set,
+        iteration_scheme=ShuffledScheme(
+            train_set.num_examples, batch_size, rng=rng))
+    train_monitor_stream = DataStream.default_stream(
+        train_set,
+        iteration_scheme=ShuffledScheme(
+            5000, monitoring_batch_size, rng=rng))
+    valid_monitor_stream = DataStream.default_stream(
+        valid_set,
+        iteration_scheme=ShuffledScheme(
+            5000, monitoring_batch_size, rng=rng))
+    return main_loop_stream, train_monitor_stream, valid_monitor_stream
+
+
+class Flower(H5PYDataset):
+    filename = 'flowers102_32x32.hdf5'
+    default_transformers = uint8_pixels_to_floatX(('features',))
+
+    def __init__(self, which_sets, **kwargs):
+        kwargs.setdefault('load_in_memory', True)
+        super(Flower, self).__init__(
+            file_or_path=find_in_data_path(self.filename),
+            which_sets=which_sets, **kwargs)
+
+
+def create_flower_data_streams(batch_size, monitoring_batch_size, rng=None):
+    # Since it's so small just use the entire dataset.
+    train_set = Flower(
+        ('train',), sources=('features',), subset=slice(0, 114646))
+    valid_set = Flower(
+        ('train',), sources=('features',), subset=slice(114646, 122835))
     main_loop_stream = DataStream.default_stream(
         train_set,
         iteration_scheme=ShuffledScheme(
