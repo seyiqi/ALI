@@ -54,6 +54,7 @@ if __name__ == "__main__":
     stream_functions = {
         'cifar10': streams.create_cifar10_data_streams,
         'svhn': streams.create_svhn_data_streams,
+        'flower': streams.create_flower_data_streams,
         'celeba': streams.create_celeba_data_streams,
         'tiny_imagenet': streams.create_tiny_imagenet_data_streams}
     parser = argparse.ArgumentParser(description="Plot interpolations.")
@@ -74,7 +75,6 @@ if __name__ == "__main__":
         main_loop = load(src)
     num_pairs = args.num_pairs
     rng = numpy.random.RandomState()
-    _1, _2, data_stream = stream_functions[args.which_dataset](num_pairs,
-                                                               num_pairs,
-                                                               rng=rng)
+    _1, _2, data_stream = stream_functions[args.which_dataset](
+            num_pairs, num_pairs, rng=rng)
     main(main_loop, data_stream, num_pairs, args.num_steps, args.save_path)
