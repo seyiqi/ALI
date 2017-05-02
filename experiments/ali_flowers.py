@@ -25,13 +25,13 @@ from ali.utils import get_log_odds, conv_brick, conv_transpose_brick, bn_brick
 
 BATCH_SIZE = 100
 MONITORING_BATCH_SIZE = 500
-NUM_EPOCHS = 600
+NUM_EPOCHS = 5000
 IMAGE_SIZE = (32, 32)
 NUM_CHANNELS = 3
-NLAT = 64
+NLAT = 16
 GAUSSIAN_INIT = IsotropicGaussian(std=0.01)
 ZERO_INIT = Constant(0)
-LEAK = 0.1
+LEAK = 0.2
 NUM_PIECES = 2
 LEARNING_RATE = 1e-4
 BETA1 = 0.5
@@ -39,7 +39,8 @@ BETA1 = 0.5
 
 def create_model_brick():
     layers = [
-        conv_brick(5, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(3, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_brick(3, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
         conv_brick(4, 2, 64), bn_brick(), LeakyRectifier(leak=LEAK),
         conv_brick(4, 1, 128), bn_brick(), LeakyRectifier(leak=LEAK),
         conv_brick(4, 2, 256), bn_brick(), LeakyRectifier(leak=LEAK),
@@ -56,7 +57,8 @@ def create_model_brick():
         conv_transpose_brick(4, 2, 128), bn_brick(), LeakyRectifier(leak=LEAK),
         conv_transpose_brick(4, 1, 64), bn_brick(), LeakyRectifier(leak=LEAK),
         conv_transpose_brick(4, 2, 32), bn_brick(), LeakyRectifier(leak=LEAK),
-        conv_transpose_brick(5, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_transpose_brick(3, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+        conv_transpose_brick(3, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
         conv_transpose_brick(1, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
         conv_brick(1, 1, NUM_CHANNELS), Logistic()]
     decoder_mapping = ConvolutionalSequence(
@@ -65,7 +67,8 @@ def create_model_brick():
     decoder = DeterministicConditional(decoder_mapping, name='decoder')
 
     layers = [
-        conv_brick(5, 1, 32), ConvMaxout(num_pieces=NUM_PIECES),
+        conv_brick(3, 1, 32),
+        conv_brick(3, 1, 32), ConvMaxout(num_pieces=NUM_PIECES),
         conv_brick(4, 2, 64), ConvMaxout(num_pieces=NUM_PIECES),
         conv_brick(4, 1, 128), ConvMaxout(num_pieces=NUM_PIECES),
         conv_brick(4, 2, 256), ConvMaxout(num_pieces=NUM_PIECES),

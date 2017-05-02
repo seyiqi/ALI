@@ -28,3 +28,113 @@ LEAK = 0.1
 NUM_PIECES = 2
 LEARNING_RATE = 1e-4
 BETA1 = 0.5
+
+Experiment 3
+-- Images look "grid-like", so let's split the first conv from kernel 5 to
+-- two convolutions of kernel 3, see if that helps.
+From
+	conv_brick(5, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+To
+	conv_brick(3, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+	conv_brick(3, 1, 32), bn_brick(), LeakyRectifier(leak=LEAK),
+
+BATCH_SIZE = 100
+MONITORING_BATCH_SIZE = 500
+NUM_EPOCHS = 50
+IMAGE_SIZE = (32, 32)
+NUM_CHANNELS = 3
+NLAT = 64
+GAUSSIAN_INIT = IsotropicGaussian(std=0.01)
+ZERO_INIT = Constant(0)
+LEAK = 0.1
+NUM_PIECES = 2
+LEARNING_RATE = 1e-4
+BETA1 = 0.5
+
+Experiment 4
+-- Increase Gaussian noise, 0.01 -> 0.1
+
+BATCH_SIZE = 100
+MONITORING_BATCH_SIZE = 500
+NUM_EPOCHS = 50
+IMAGE_SIZE = (32, 32)
+NUM_CHANNELS = 3
+NLAT = 64
+GAUSSIAN_INIT = IsotropicGaussian(std=0.1)
+ZERO_INIT = Constant(0)
+LEAK = 0.1
+NUM_PIECES = 2
+LEARNING_RATE = 1e-4
+BETA1 = 0.5
+
+Experiment 5
+-- Increase leaky relu
+BATCH_SIZE = 100
+MONITORING_BATCH_SIZE = 500
+NUM_EPOCHS = 50
+IMAGE_SIZE = (32, 32)
+NUM_CHANNELS = 3
+NLAT = 64
+GAUSSIAN_INIT = IsotropicGaussian(std=0.01)
+ZERO_INIT = Constant(0)
+LEAK = 0.2
+NUM_PIECES = 2
+LEARNING_RATE = 1e-4
+BETA1 = 0.5
+
+Experiment 6
+-- Reduced NLAT to 32
+BATCH_SIZE = 100
+MONITORING_BATCH_SIZE = 500
+NUM_EPOCHS = 50
+IMAGE_SIZE = (32, 32)
+NUM_CHANNELS = 3
+NLAT = 32
+GAUSSIAN_INIT = IsotropicGaussian(std=0.01)
+ZERO_INIT = Constant(0)
+LEAK = 0.2
+NUM_PIECES = 2
+LEARNING_RATE = 1e-4
+BETA1 = 0.5
+
+
+(CIFAR10) Experiment 7
+High Gaussian Prior (0.1)
+
+
+Experiment 8
+-- Reduced NLAT to 16
+BATCH_SIZE = 100
+MONITORING_BATCH_SIZE = 500
+NUM_EPOCHS = 50
+IMAGE_SIZE = (32, 32)
+NUM_CHANNELS = 3
+NLAT = 16
+GAUSSIAN_INIT = IsotropicGaussian(std=0.01)
+ZERO_INIT = Constant(0)
+LEAK = 0.2
+NUM_PIECES = 2
+LEARNING_RATE = 1e-4
+BETA1 = 0.5
+
+Experiment 9
+-- Reduced NLAT to 16
+-- Restored kernel 5
+BATCH_SIZE = 100
+MONITORING_BATCH_SIZE = 500
+NUM_EPOCHS = 50
+IMAGE_SIZE = (32, 32)
+NUM_CHANNELS = 3
+NLAT = 16
+GAUSSIAN_INIT = IsotropicGaussian(std=0.01)
+ZERO_INIT = Constant(0)
+LEAK = 0.2
+NUM_PIECES = 2
+LEARNING_RATE = 1e-4
+BETA1 = 0.5
+
+
+Experiment 10
+Recreation of #3, as the best performer.
+Experiment 11
+Same as #10, a lot more epochs

@@ -59,10 +59,7 @@ class Flower(H5PYDataset):
             which_sets=which_sets, **kwargs)
 
 
-def create_flower_data_streams(
-        batch_size, monitoring_batch_size, rng=None,
-        train_slice=slice(0, 114646),
-        valid_slice=slice(114646, 122835)):
+def create_flower_data_streams(batch_size, monitoring_batch_size, rng=None):
     # Since it's so small just use the entire dataset.
     train_set = Flower(
         ('train',), sources=('features',), subset=slice(0, 114646))
