@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import argparse
+import matplotlib
+matplotlib.use('Agg')
 
 import numpy
 import theano
@@ -11,7 +13,8 @@ from theano import tensor
 from ali import streams
 
 
-def main(main_loop, from_x, to_x, num_pairs, num_steps, save_path):
+def main(main_loop, from_x, to_x, num_steps, save_path):
+    num_pairs = len(from_x)
     ali, = main_loop.model.top_bricks
     x = tensor.tensor4('features')
     z = tensor.tensor4('z')
@@ -33,6 +36,7 @@ def main(main_loop, from_x, to_x, num_pairs, num_steps, save_path):
         (num_pairs * (num_steps + 3),) + between_x_list[0].shape[1:],
         dtype=between_x_list[0].dtype)
     for i, between_x in enumerate(between_x_list):
+        print(between_x.shape)
         images[i::num_steps + 3] = between_x
 
     for image, axis in zip(images, grid):
@@ -58,7 +62,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Plot interpolations.")
     parser.add_argument("main_loop_path", type=str,
                         help="path to the pickled main loop.")
-    parser.add_argument("--pairs_file", type=str, default='pairs.txt')
+    parser.add_argument("--pairs_file", type=str, default='pairs.txt',
                         help="path to file containing pairs.")
     parser.add_argument("--num-steps", type=int, default=10,
                         help="number of interpolation steps.")
@@ -68,11 +72,13 @@ if __name__ == "__main__":
 
     with open(args.main_loop_path, 'rb') as src:
         main_loop = load(src)
-    pairs = numpy.loadtxt(args.pairs_file)
+    pairs = numpy.loadtxt(args.pairs_file, dtype=numpy.int32)
     assert pairs.shape[1] == 2
-    dataset = Flower(
-        ('train',), sources=('features',), subset=slice(0, np.max(pairs)))
+    print(pairs.shape)
+    print(numpy.max(pairs))
+    dataset = streams.Flower(
+        ('train',), sources=('features',), subset=slice(0, 1 + numpy.max(pairs)))
     data, = dataset.data_sources
-    from_x = data[pairs[:, 0]]
-    to_x = data[pairs[:, 1]]
-    main(main_loop, from_x, to_x, num_pairs, args.num_steps, args.save_path)
+    from_x = (data[pairs[:, 0]] / 255.0).astype(numpy.float32)
+    to_x = (data[pairs[:, 1]] / 255.0).astype(numpy.float32)
+    main(main_loop, from_x, to_x, args.num_steps, args.save_path)

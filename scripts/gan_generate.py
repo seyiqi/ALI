@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import argparse
+import matplotlib
+matplotlib.use('Agg')
 
 import theano
 from blocks.serialization import load
@@ -36,7 +38,7 @@ if __name__ == "__main__":
                         help="path to the pickled main loop.")
     parser.add_argument("--nrows", type=int, default=10,
                         help="number of rows of samples to display.")
-    parser.add_argument("--ncols", type=int, default=10,
+    parser.add_argument("--ncols", type=int, default=5,
                         help="number of columns of samples to display.")
     parser.add_argument("--save-path", type=str, default=None,
                         help="where to save the generated samples.")
