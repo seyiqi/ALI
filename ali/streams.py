@@ -1,7 +1,7 @@
 """Functions for creating data streams."""
 from fuel.datasets import CIFAR10, SVHN, CelebA
 from fuel.datasets.toy import Spiral
-from fuel.schemes import ShuffledScheme
+from fuel.schemes import ShuffledScheme, ConstantScheme
 from fuel.streams import DataStream
 from fuel.datasets import H5PYDataset
 from fuel.transformers.defaults import uint8_pixels_to_floatX
@@ -59,7 +59,8 @@ class Flower(H5PYDataset):
             which_sets=which_sets, **kwargs)
 
 
-def create_flower_data_streams(batch_size, monitoring_batch_size, rng=None):
+def create_flower_data_streams(
+        batch_size, monitoring_batch_size, rng=None, random=True):
     # Since it's so small just use the entire dataset.
     train_set = Flower(
         ('train',), sources=('features',), subset=slice(0, 114646))

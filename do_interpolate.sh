@@ -22,4 +22,4 @@ nvidia-smi
 
 FUEL_CONFIG=fuelrc PYTHONPATH=$PYTHONPATH:. THEANORC=theanorc python \
   scripts/interpolate --save-path flowers_interpolate.png \
-  ali_flowers_32x32_11_e206.tar
+  ali_flowers_32x32_13.tar

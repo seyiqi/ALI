@@ -23,4 +23,4 @@ nvidia-smi
 FUEL_CONFIG=fuelrc PYTHONPATH=$PYTHONPATH:. THEANORC=theanorc python \
   scripts/gan_generate.py \
   --save-path flowers_sample.png \
-  ali_flowers_32x32_11_e206.tar
+  ali_flowers_32x32_13.tar
